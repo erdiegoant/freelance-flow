@@ -35,7 +35,7 @@ class InvoiceController extends Controller
 
         $invoice->update(['status' => InvoiceStatus::Processing]);
 
-        GenerateInvoicePdf::dispatch($invoice);
+        new GenerateInvoicePdf($invoice)->handle();
 
         return response()->json(new InvoiceResource($invoice), 202);
     }

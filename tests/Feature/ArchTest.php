@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Controller;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -25,10 +24,6 @@ arch('api controllers have the Controller suffix and extend the base Controller'
 arch('services have the Service suffix')
     ->expect('App\Services')
     ->toHaveSuffix('Service');
-
-arch('jobs implement ShouldQueue')
-    ->expect('App\Jobs')
-    ->toImplement(ShouldQueue::class);
 
 arch('notifications extend the base Notification class')
     ->expect('App\Notifications')

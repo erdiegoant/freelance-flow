@@ -17,7 +17,8 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         pdo_pgsql \
         zip \
         gd \
-        pcntl
+        pcntl \
+        exif
 
 # Install Redis extension via PECL
 RUN pecl install redis && docker-php-ext-enable redis
@@ -27,18 +28,28 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Install dependencies before copying full source (layer caching)
+# Copy only composer files first for layer caching
 COPY composer.json composer.lock ./
+
+# Create required directories before composer runs (package:discover needs bootstrap/cache)
+RUN mkdir -p bootstrap/cache \
+        storage/framework/sessions \
+        storage/framework/views \
+        storage/framework/cache \
+    && chmod -R 775 bootstrap/cache storage
+
 RUN composer install --no-scripts --no-autoloader --no-interaction
 
-# Copy application source
+# Copy full application source
 COPY . .
 
-# Finish autoloader and run scripts
-RUN composer dump-autoload --optimize --no-interaction
-
-# Set correct permissions
-RUN chown -R www-data:www-data storage bootstrap/cache \
-    && chmod -R 775 storage bootstrap/cache
+# Recreate dirs (in case .dockerignore excluded them), fix ownership, generate autoloader
+RUN mkdir -p bootstrap/cache \
+        storage/framework/sessions \
+        storage/framework/views \
+        storage/framework/cache \
+    && chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache \
+    && composer dump-autoload --optimize --no-interaction
 
 CMD ["php-fpm"]

@@ -1,24 +1,26 @@
 <?php
 
 use App\Enums\InvoiceStatus;
-use App\Jobs\GenerateInvoicePdf;
 use App\Models\Invoice;
 use App\Models\Project;
 use App\Models\TimeLog;
 use App\Services\InvoiceNumberService;
-use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Redis;
 
 beforeEach(function () {
     // Provide a predictable invoice number so tests don't depend on the DB sequence
     $this->mock(InvoiceNumberService::class)
         ->shouldReceive('generate')
         ->andReturn('INV-2026-0001');
+
+    // Silence the Redis push in tests that don't assert on it
+    $conn = Mockery::mock();
+    $conn->shouldReceive('rpush');
+    Redis::shouldReceive('connection')->with('go_worker')->andReturn($conn);
 });
 
 describe('POST /api/projects/{project}/invoices', function () {
     it('generates an invoice and returns 202 with processing status', function () {
-        Queue::fake();
-
         $project = Project::factory()->create(['hourly_rate' => 75]);
         TimeLog::factory(3)->for($project)->create(['logged_at' => '2026-03-01', 'hours' => 2]);
 
@@ -33,8 +35,6 @@ describe('POST /api/projects/{project}/invoices', function () {
     });
 
     it('stores the invoice in the database', function () {
-        Queue::fake();
-
         $project = Project::factory()->create(['hourly_rate' => 100]);
         TimeLog::factory()->for($project)->create(['logged_at' => '2026-02-15', 'hours' => 4]);
 
@@ -50,25 +50,19 @@ describe('POST /api/projects/{project}/invoices', function () {
         ]);
     });
 
-    it('dispatches GenerateInvoicePdf job', function () {
-        Queue::fake();
-
+    it('creates invoice items for each time log', function () {
         $project = Project::factory()->create(['hourly_rate' => 75]);
-        TimeLog::factory()->for($project)->create(['logged_at' => '2026-03-01']);
+        TimeLog::factory(2)->for($project)->create(['logged_at' => '2026-03-01', 'hours' => 3]);
 
         $this->postJson("/api/projects/{$project->id}/invoices", [
             'start_date' => '2026-01-01',
             'end_date' => '2026-03-31',
         ])->assertStatus(202);
 
-        Queue::assertPushed(GenerateInvoicePdf::class, function ($job) {
-            return $job->invoice->invoice_number === 'INV-2026-0001';
-        });
+        $this->assertDatabaseCount('invoice_items', 2);
     });
 
     it('calculates totals correctly with tax', function () {
-        Queue::fake();
-
         // 3 logs × 2 hours × $75 = $450 subtotal
         $project = Project::factory()->create(['hourly_rate' => 75]);
         TimeLog::factory(3)->for($project)->create(['logged_at' => '2026-03-01', 'hours' => 2]);
@@ -85,8 +79,6 @@ describe('POST /api/projects/{project}/invoices', function () {
     });
 
     it('only includes time logs within the date range', function () {
-        Queue::fake();
-
         $project = Project::factory()->create(['hourly_rate' => 100]);
         TimeLog::factory()->for($project)->create(['logged_at' => '2026-01-15', 'hours' => 3]); // inside range
         TimeLog::factory()->for($project)->create(['logged_at' => '2025-12-31', 'hours' => 8]); // outside range

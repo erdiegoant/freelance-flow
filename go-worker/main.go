@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 )
 
 func main() {
@@ -20,5 +21,7 @@ func main() {
 	log.Println("Worker implementation coming in Phase 2.")
 
 	// Block indefinitely — Phase 2 will replace this with queue processing.
-	select {}
+	for {
+		time.Sleep(time.Hour)
+	}
 }

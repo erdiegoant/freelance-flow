@@ -3,16 +3,12 @@
 namespace App\Jobs;
 
 use App\Models\Invoice;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Redis;
 
-class GenerateInvoicePdf implements ShouldQueue
+readonly class GenerateInvoicePdf
 {
-    use Queueable;
-
     public function __construct(
-        public readonly Invoice $invoice,
+        public Invoice $invoice,
     ) {}
 
     /**
@@ -54,6 +50,6 @@ class GenerateInvoicePdf implements ShouldQueue
             'callback_secret' => config('services.invoice_worker.callback_secret'),
         ];
 
-        Redis::rpush('queues:invoice_generation', json_encode($payload));
+        Redis::connection('go_worker')->rpush('queues:invoice_generation', json_encode($payload));
     }
 }

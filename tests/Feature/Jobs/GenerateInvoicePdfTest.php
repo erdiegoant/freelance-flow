@@ -7,17 +7,31 @@ use App\Models\InvoiceItem;
 use App\Models\Project;
 use Illuminate\Support\Facades\Redis;
 
+/**
+ * Helper to set up a Redis connection mock that captures the rpush call.
+ * Returns a reference to the captured payload string.
+ */
+function mockGoWorkerRedis(?callable $withArgs = null): void
+{
+    $conn = Mockery::mock();
+    $expectation = $conn->shouldReceive('rpush')->once();
+
+    if ($withArgs) {
+        $expectation->withArgs($withArgs);
+    }
+
+    Redis::shouldReceive('connection')->with('go_worker')->andReturn($conn);
+}
+
 describe('GenerateInvoicePdf job', function () {
     it('pushes a JSON payload to the invoice_generation Redis queue', function () {
-        Redis::shouldReceive('rpush')
-            ->once()
-            ->withArgs(function (string $key, string $payload) {
-                expect($key)->toBe('queues:invoice_generation');
-                $data = json_decode($payload, true);
-                expect($data)->toBeArray()->toHaveKey('invoice_id');
+        mockGoWorkerRedis(function (string $key, string $payload) {
+            expect($key)->toBe('queues:invoice_generation');
+            $data = json_decode($payload, true);
+            expect($data)->toBeArray()->toHaveKey('invoice_id');
 
-                return true;
-            });
+            return true;
+        });
 
         $invoice = Invoice::factory()
             ->for(Project::factory()->create(['hourly_rate' => 75]))
@@ -37,13 +51,11 @@ describe('GenerateInvoicePdf job', function () {
     it('includes all required payload fields', function () {
         $capturedPayload = null;
 
-        Redis::shouldReceive('rpush')
-            ->once()
-            ->withArgs(function (string $key, string $payload) use (&$capturedPayload) {
-                $capturedPayload = json_decode($payload, true);
+        mockGoWorkerRedis(function (string $key, string $payload) use (&$capturedPayload) {
+            $capturedPayload = json_decode($payload, true);
 
-                return true;
-            });
+            return true;
+        });
 
         $client = Client::factory()->create([
             'name' => 'Test Client',
@@ -91,13 +103,11 @@ describe('GenerateInvoicePdf job', function () {
     it('serialises numeric values as floats not strings', function () {
         $capturedPayload = null;
 
-        Redis::shouldReceive('rpush')
-            ->once()
-            ->withArgs(function (string $key, string $payload) use (&$capturedPayload) {
-                $capturedPayload = json_decode($payload, true);
+        mockGoWorkerRedis(function (string $key, string $payload) use (&$capturedPayload) {
+            $capturedPayload = json_decode($payload, true);
 
-                return true;
-            });
+            return true;
+        });
 
         $invoice = Invoice::factory()
             ->for(Project::factory()->create(['hourly_rate' => 75]))
