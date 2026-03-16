@@ -19,6 +19,7 @@ class Client extends Model
         'company_name',
         'address',
         'tax_id',
+        'status',
     ];
 
     /** @return HasMany<Project, $this> */

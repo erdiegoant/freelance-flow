@@ -37,6 +37,7 @@ return [
 
     'invoice_worker' => [
         'callback_secret' => env('INVOICE_CALLBACK_SECRET'),
+        'go_worker_host' => env('GO_WORKER_HOST', 'go-worker'),
     ],
 
 ];

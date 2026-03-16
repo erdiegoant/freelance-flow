@@ -31,6 +31,7 @@
         <env name="REDIS_CLIENT" value="array"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="INVOICE_CALLBACK_SECRET" value="test-callback-secret"/>
+        <env name="GO_WORKER_HOST" value="127.0.0.1"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

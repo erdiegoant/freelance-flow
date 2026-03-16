@@ -5,12 +5,13 @@ use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\TimeLogController;
+use App\Http\Middleware\EnsureCallbackFromWorker;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/auth/login', [AuthController::class, 'login']);
 
-// Go worker callback — authenticated via X-Callback-Secret, not a user token
-Route::post('/invoices/{invoice}/callback', [InvoiceController::class, 'callback']);
+Route::post('/invoices/{invoice}/callback', [InvoiceController::class, 'callback'])
+    ->middleware(EnsureCallbackFromWorker::class);
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/auth/logout', [AuthController::class, 'logout']);

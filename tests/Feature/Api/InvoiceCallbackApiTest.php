@@ -8,7 +8,10 @@ use App\Notifications\InvoicePdfReadyNotification;
 use Illuminate\Support\Facades\Notification;
 
 beforeEach(function () {
-    config(['services.invoice_worker.callback_secret' => 'test-callback-secret']);
+    config([
+        'services.invoice_worker.callback_secret' => 'test-callback-secret',
+        'services.invoice_worker.go_worker_host' => '127.0.0.1',
+    ]);
 });
 
 describe('POST /api/invoices/{invoice}/callback', function () {
@@ -120,5 +123,18 @@ describe('POST /api/invoices/{invoice}/callback', function () {
         ], ['X-Callback-Secret' => 'test-callback-secret'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('status');
+    });
+
+    it('rejects request from a non-whitelisted IP', function () {
+        $invoice = Invoice::factory()
+            ->for(Project::factory()->create())
+            ->create(['status' => InvoiceStatus::Processing]);
+
+        $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.99'])
+            ->postJson("/api/invoices/{$invoice->id}/callback", [
+                'status' => 'completed',
+                'pdf_path' => 'invoices/INV-2026-0001.pdf',
+            ], ['X-Callback-Secret' => 'test-callback-secret'])
+            ->assertForbidden();
     });
 });

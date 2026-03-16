@@ -7,14 +7,9 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class InvoiceCallbackRequest extends FormRequest
 {
-    /**
-     * Authorize by verifying the shared secret header sent by the Go worker.
-     */
     public function authorize(): bool
     {
-        $secret = config('services.invoice_worker.callback_secret');
-
-        return $this->header('X-Callback-Secret') === $secret;
+        return true;
     }
 
     /**
