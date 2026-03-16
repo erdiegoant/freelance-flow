@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'invoice_worker' => [
+        'callback_secret' => env('INVOICE_CALLBACK_SECRET'),
+    ],
+
 ];
