@@ -2,6 +2,11 @@
 
 use App\Models\Project;
 use App\Models\TimeLog;
+use App\Models\User;
+
+beforeEach(function () {
+    $this->actingAs(User::factory()->create(), 'sanctum');
+});
 
 describe('POST /api/projects/{project}/time-logs', function () {
     it('logs time on a project and returns 201', function () {

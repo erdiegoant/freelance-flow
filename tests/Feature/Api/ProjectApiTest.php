@@ -3,6 +3,11 @@
 use App\Enums\ProjectStatus;
 use App\Models\Client;
 use App\Models\Project;
+use App\Models\User;
+
+beforeEach(function () {
+    $this->actingAs(User::factory()->create(), 'sanctum');
+});
 
 describe('GET /api/clients/{client}/projects', function () {
     it('returns all projects for a client', function () {

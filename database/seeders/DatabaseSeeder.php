@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Client;
 use App\Models\Project;
 use App\Models\TimeLog;
+use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -14,6 +15,12 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
+        User::factory()->create([
+            'name' => 'Freelancer',
+            'email' => 'freelancer@example.com',
+            'password' => bcrypt('password'),
+        ]);
+
         Client::factory(3)
             ->create()
             ->each(function (Client $client): void {

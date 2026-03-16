@@ -4,10 +4,12 @@ use App\Enums\InvoiceStatus;
 use App\Models\Invoice;
 use App\Models\Project;
 use App\Models\TimeLog;
+use App\Models\User;
 use App\Services\InvoiceNumberService;
 use Illuminate\Support\Facades\Redis;
 
 beforeEach(function () {
+    $this->actingAs(User::factory()->create(), 'sanctum');
     // Provide a predictable invoice number so tests don't depend on the DB sequence
     $this->mock(InvoiceNumberService::class)
         ->shouldReceive('generate')

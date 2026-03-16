@@ -2,6 +2,34 @@
 
 A freelance project management API built with Laravel 12. Track clients, projects, and time logs — then generate invoices with PDF creation offloaded to a Go microservice via Redis.
 
+## Authentication
+
+All API endpoints (except the Go worker callback) are protected with **Laravel Sanctum** token authentication. Tokens expire after **24 hours**.
+
+**Login to get a token:**
+```bash
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "freelancer@example.com", "password": "password"}'
+```
+
+Response:
+```json
+{ "token": "1|abc...", "expires_at": "2026-03-17T12:00:00.000000Z" }
+```
+
+**Use the token on subsequent requests:**
+```bash
+curl http://localhost:8080/api/invoices/1 \
+  -H "Authorization: Bearer 1|abc..."
+```
+
+**Logout (revoke token):**
+```bash
+curl -X POST http://localhost:8080/api/auth/logout \
+  -H "Authorization: Bearer 1|abc..."
+```
+
 ## Stack
 
 | Layer | Technology |
@@ -37,6 +65,13 @@ The Go worker reads from `queues:invoice_generation`, renders a PDF, uploads it 
 
 ## API Endpoints
 
+Authentication endpoints (public):
+```
+POST   /api/auth/login                        Obtain an API token
+POST   /api/auth/logout                       Revoke the current token  [requires token]
+```
+
+Protected endpoints (require `Authorization: Bearer <token>`):
 ```
 POST   /api/clients                           Create a client
 GET    /api/clients/{client}/projects         List projects for a client
@@ -44,6 +79,10 @@ POST   /api/clients/{client}/projects         Create a project
 POST   /api/projects/{project}/time-logs      Log time on a project
 POST   /api/projects/{project}/invoices       Generate an invoice
 GET    /api/invoices/{invoice}                Get invoice status and details
+```
+
+Go worker endpoint (authenticated via `X-Callback-Secret` header, not a user token):
+```
 POST   /api/invoices/{invoice}/callback       Go worker callback (PDF done)
 ```
 
@@ -79,8 +118,14 @@ The seeder creates 3 clients, 2–3 active projects each, and 10–20 unbilled t
 ### Trigger a test invoice
 
 ```bash
+# First, get a token (seeder creates this user)
+TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "freelancer@example.com", "password": "password"}' | jq -r .token)
+
 curl -X POST http://localhost:8080/api/projects/1/invoices \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{"start_date": "2026-01-01", "end_date": "2026-03-31"}'
 ```
 
@@ -164,6 +209,7 @@ AWS_ENDPOINT=http://minio:9000
 AWS_BUCKET=freelanceflow
 AWS_USE_PATH_STYLE_ENDPOINT=true
 
+SANCTUM_TOKEN_EXPIRATION=1440   # token lifetime in minutes (default: 24h)
 INVOICE_CALLBACK_SECRET=        # shared secret between Laravel and Go worker
 MAIL_MAILER=log                 # emails go to laravel.log in development
 ```

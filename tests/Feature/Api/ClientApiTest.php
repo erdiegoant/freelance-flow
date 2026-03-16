@@ -1,6 +1,11 @@
 <?php
 
 use App\Models\Client;
+use App\Models\User;
+
+beforeEach(function () {
+    $this->actingAs(User::factory()->create(), 'sanctum');
+});
 
 describe('POST /api/clients', function () {
     it('creates a client and returns 201', function () {
