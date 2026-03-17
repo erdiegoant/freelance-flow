@@ -1,27 +1,65 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
-	"time"
+	"os/signal"
+	"syscall"
+    "time"
+
+	"freelanceflow/go-worker/internal/config"
+	"freelanceflow/go-worker/internal/queue"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	redisHost := os.Getenv("REDIS_HOST")
-	redisPort := os.Getenv("REDIS_PORT")
-
-	if redisHost == "" {
-		redisHost = "redis"
-	}
-	if redisPort == "" {
-		redisPort = "6379"
+	// Load .env for local development; no-op in Docker where env is injected.
+	if os.Getenv("DOCKER_ENV") == "" {
+		if err := godotenv.Load(".env"); err != nil {
+			log.Fatalf("Failed to load .env: %v", err)
+		}
 	}
 
-	log.Printf("FreelanceFlow Go PDF worker starting — connecting to Redis at %s:%s", redisHost, redisPort)
-	log.Println("Worker implementation coming in Phase 2.")
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
 
-	// Block indefinitely — Phase 2 will replace this with queue processing.
+	log.Printf("FreelanceFlow Go PDF worker starting — connecting to Redis at %s", cfg.RedisAddr)
+
+	q := queue.New(cfg)
+	defer q.Close()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	if err := q.Ping(ctx); err != nil {
+		log.Fatalf("Failed to connect to Redis: %v", err)
+	}
+
+	log.Println("Redis connection OK. Waiting for jobs...")
+
 	for {
-		time.Sleep(time.Hour)
+		select {
+		case <-ctx.Done():
+			log.Println("Shutdown signal received. Exiting.")
+			return
+		default:
+		}
+
+		payload, err := q.Dequeue(ctx)
+		if err != nil {
+            log.Printf("Dequeue error: %v", err)
+            time.Sleep(2 * time.Second)
+            continue
+		}
+
+		if payload == "" {
+			continue // timeout — no job, keep looping
+		}
+
+		log.Printf("Received payload: %s", payload)
 	}
 }

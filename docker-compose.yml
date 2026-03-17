@@ -93,11 +93,16 @@ services:
     build:
       context: .
       dockerfile: docker/go-worker/Dockerfile
+    env_file:
+      - ./go-worker/.env
     environment:
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
+      DOCKER_ENV: "true"
     depends_on:
       redis:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     restart: unless-stopped
 
