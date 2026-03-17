@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-    "time"
+	"time"
 
 	"freelanceflow/go-worker/internal/config"
 	"freelanceflow/go-worker/internal/queue"
@@ -51,9 +51,9 @@ func main() {
 
 		payload, err := q.Dequeue(ctx)
 		if err != nil {
-            log.Printf("Dequeue error: %v", err)
-            time.Sleep(2 * time.Second)
-            continue
+			log.Printf("Dequeue error: %v", err)
+			time.Sleep(2 * time.Second)
+			continue
 		}
 
 		if payload == "" {

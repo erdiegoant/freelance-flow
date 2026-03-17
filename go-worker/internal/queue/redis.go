@@ -51,9 +51,9 @@ func (q *Queue) Dequeue(ctx context.Context) (string, error) {
 }
 
 func (q *Queue) Ping(ctx context.Context) error {
-    return q.client.Ping(ctx).Err()
+	return q.client.Ping(ctx).Err()
 }
 
 func (q *Queue) Close() error {
-    return q.client.Close()
+	return q.client.Close()
 }
