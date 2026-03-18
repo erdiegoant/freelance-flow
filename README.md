@@ -1,10 +1,10 @@
 # FreelanceFlow
 
-A freelance project management API built with Laravel 13. Track clients, projects, and time logs — then generate invoices with PDF creation offloaded to a Go microservice via Redis.
+A freelance project management API built with Laravel 12. Track clients, projects, and time logs — then generate invoices with PDF creation offloaded to a Go microservice via Redis.
 
 ## Authentication
 
-All API endpoints (except the Go worker callback) are protected with **Laravel Sanctum** token authentication. Tokens expire after **24 hours**.
+All API endpoints (except the Go worker callback and PDF download) are protected with **Laravel Sanctum** token authentication. Tokens expire after **24 hours**.
 
 **Login to get a token:**
 ```bash
@@ -34,11 +34,11 @@ curl -X POST http://localhost:8080/api/auth/logout \
 
 | Layer | Technology |
 |---|---|
-| API | PHP 8.5 + Laravel 13 |
+| API | PHP 8.5 + Laravel 12 |
 | Database | PostgreSQL 17 |
 | Queue / IPC | Redis 7 |
 | File storage | MinIO (S3-compatible) |
-| PDF worker | Go (separate service, reads from Redis) |
+| PDF worker | Go 1.23 (separate service, reads from Redis) |
 | Infrastructure | Docker Compose |
 
 ## Features
@@ -56,12 +56,18 @@ Log time against a project with a description, hours worked, and date. Time logs
 Trigger invoice generation for a project over a given date range. The API:
 - Pulls all unbilled time logs within the range
 - Calculates subtotal, tax, and total
+- Assigns a globally unique sequential invoice number (`INV-YYYY-NNNN`) via an atomic PostgreSQL sequence
 - Creates the invoice and its line items
 - Pushes a structured JSON payload to the `queues:invoice_generation` Redis key for the Go worker to consume
 - Accepts a callback from the Go worker when PDF generation completes or fails
 
 ### PDF Generation (Go worker)
-The Go worker reads from `queues:invoice_generation`, renders a PDF, uploads it to MinIO, and calls back to `POST /api/invoices/{invoice}/callback`. On success the invoice status becomes `completed` and the PDF path is stored. On failure the status becomes `failed`. Email notifications are sent to the client (success) or freelancer (failure) in both cases.
+The Go worker reads from `queues:invoice_generation`, renders a PDF using `go-pdf/fpdf`, uploads it to MinIO, and calls back to `POST /api/invoices/{invoice}/callback`. On success the invoice status becomes `completed` and the PDF path is stored. On failure the status becomes `failed`. Email notifications are sent to the client (success) or freelancer (failure) in both cases.
+
+The worker runs a configurable pool of goroutines (`WORKER_POOL_SIZE`, default `5`). Each goroutine independently `BLPOP`s from Redis, processes the job, and sends the callback — no shared state between workers.
+
+### PDF Download
+On success, the client receives an email with a **temporary signed download link** (`GET /api/invoices/{invoice}/download`) valid for 48 hours. No login is required to use the link — it is cryptographically signed by Laravel and cannot be forged or reused after expiry. The file is streamed from MinIO through the Laravel API.
 
 ## API Endpoints
 
@@ -81,7 +87,12 @@ POST   /api/projects/{project}/invoices       Generate an invoice
 GET    /api/invoices/{invoice}                Get invoice status and details
 ```
 
-Go worker endpoint (authenticated via `X-Callback-Secret` header, not a user token):
+PDF download (public, requires valid signed URL from email):
+```
+GET    /api/invoices/{invoice}/download       Stream the generated PDF
+```
+
+Go worker endpoint (authenticated via `X-Callback-Secret` header + IP check):
 ```
 POST   /api/invoices/{invoice}/callback       Go worker callback (PDF done)
 ```
@@ -104,7 +115,7 @@ Services:
 | Service | URL |
 |---|---|
 | API | http://localhost:8080 |
-| MinIO console | http://localhost:9001 |
+| MinIO console | http://localhost:9001 (minioadmin / minioadmin) |
 | PostgreSQL | localhost:5432 |
 | Redis | localhost:6379 |
 
@@ -161,24 +172,10 @@ curl http://localhost:8080/api/invoices/1?include=client,project,items \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-```json
-{
-    "data": {
-        "id": "1",
-        "type": "Invoices",
-        "attributes": { "...": "..." },
-        "relationships": {
-            "client": { "data": { "id": "1", "type": "Clients" } },
-            "project": { "data": { "id": "1", "type": "Projects" } },
-            "items": { "data": [{ "id": "1", "type": "InvoiceItems" }] }
-        }
-    },
-    "included": [
-        { "id": "1", "type": "Clients", "attributes": { "name": "Acme Corp", "...": "..." } },
-        { "id": "1", "type": "Projects", "attributes": { "name": "Website Redesign", "...": "..." } },
-        { "id": "1", "type": "InvoiceItems", "attributes": { "description": "...", "total": "337.50" } }
-    ]
-}
+### Watch the worker
+
+```bash
+docker compose logs -f go-worker
 ```
 
 ### Inspect the Redis queue
@@ -187,9 +184,43 @@ curl http://localhost:8080/api/invoices/1?include=client,project,items \
 docker compose exec redis redis-cli LRANGE queues:invoice_generation 0 -1
 ```
 
-## Go Worker Integration
+## Go Worker
 
-The Laravel API pushes a JSON payload directly to `queues:invoice_generation` in Redis (no Laravel queue worker required). The Go service should `BLPOP` from that key.
+The Go worker lives in `go-worker/` and is built and started automatically by Docker Compose.
+
+### Structure
+
+```
+go-worker/
+├── main.go
+├── go.mod
+└── internal/
+    ├── config/      # Env-based config with required-var validation
+    ├── queue/       # Redis BLPOP consumer
+    ├── pdf/         # PDF generation (go-pdf/fpdf)
+    ├── storage/     # MinIO upload (minio-go/v7)
+    ├── callback/    # HTTP POST back to Laravel
+    └── worker/      # Goroutine pool + job orchestration
+```
+
+### Environment variables (`go-worker/.env`)
+
+```ini
+REDIS_ADDR=redis:6379
+REDIS_QUEUE_KEY=queues:invoice_generation
+MINIO_ENDPOINT=minio:9000
+MINIO_ACCESS_KEY=           # required
+MINIO_SECRET_KEY=           # required
+MINIO_BUCKET=freelanceflow
+CALLBACK_SECRET=            # must match Laravel's INVOICE_CALLBACK_SECRET
+WORKER_POOL_SIZE=5
+```
+
+For local development outside Docker, copy `.env.example` to `.env` and fill in the values. The worker loads `.env` automatically when `DOCKER_ENV` is not set.
+
+### Go worker integration
+
+The Laravel API pushes a JSON payload directly to `queues:invoice_generation` in Redis (no Laravel queue worker required). The Go service `BLPOP`s from that key.
 
 **Payload structure:**
 
@@ -261,7 +292,11 @@ AWS_ENDPOINT=http://minio:9000
 AWS_BUCKET=freelanceflow
 AWS_USE_PATH_STYLE_ENDPOINT=true
 
-SANCTUM_TOKEN_EXPIRATION=1440   # token lifetime in minutes (default: 24h)
-INVOICE_CALLBACK_SECRET=        # shared secret between Laravel and Go worker
-MAIL_MAILER=log                 # emails go to laravel.log in development
+SANCTUM_TOKEN_EXPIRATION=1440        # token lifetime in minutes (default: 24h)
+INVOICE_CALLBACK_SECRET=             # shared secret between Laravel and Go worker
+WORKER_CALLBACK_BASE_URL=http://nginx  # internal Docker hostname for Go worker callbacks
+
+MAIL_MAILER=smtp
+MAIL_HOST=host.docker.internal       # use host.docker.internal to reach a local mail client (e.g. Mailpit) running on your machine outside Docker
+MAIL_PORT=2525
 ```

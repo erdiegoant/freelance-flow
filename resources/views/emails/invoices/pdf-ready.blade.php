@@ -13,7 +13,7 @@ Invoice **{{ $invoice->invoice_number }}** for **{{ $invoice->project->name }}**
 | **Total** | ${{ number_format($invoice->total, 2) }} |
 | **Due date** | {{ $invoice->due_date->format('F j, Y') }} |
 
-@component('mail::button', ['url' => config('app.url')])
+@component('mail::button', ['url' => $downloadUrl])
 Download Invoice PDF
 @endcomponent
 

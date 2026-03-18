@@ -14,6 +14,9 @@ use App\Services\InvoiceBuilderService;
 use App\Services\InvoiceCallbackService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class InvoiceController extends Controller
 {
@@ -43,6 +46,16 @@ class InvoiceController extends Controller
     public function show(Invoice $invoice): JsonResponse
     {
         return (new InvoiceResource($invoice))->response();
+    }
+
+    public function download(Invoice $invoice): StreamedResponse|Response
+    {
+        abort_if(! $invoice->pdf_path || ! Storage::disk('s3')->exists($invoice->pdf_path), 404);
+
+        return Storage::disk('s3')->download(
+            $invoice->pdf_path,
+            "{$invoice->invoice_number}.pdf",
+        );
     }
 
     public function callback(

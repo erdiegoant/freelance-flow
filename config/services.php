@@ -38,6 +38,7 @@ return [
     'invoice_worker' => [
         'callback_secret' => env('INVOICE_CALLBACK_SECRET'),
         'go_worker_host' => env('GO_WORKER_HOST', 'go-worker'),
+        'callback_base_url' => env('WORKER_CALLBACK_BASE_URL', 'http://nginx'),
     ],
 
 ];

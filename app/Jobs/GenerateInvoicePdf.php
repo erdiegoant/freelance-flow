@@ -46,7 +46,7 @@ readonly class GenerateInvoicePdf
             'tax_amount' => (float) $invoice->tax_amount,
             'total' => (float) $invoice->total,
             'due_date' => $invoice->due_date->toDateString(),
-            'callback_url' => url("/api/invoices/{$invoice->id}/callback"),
+            'callback_url' => config('services.invoice_worker.callback_base_url')."/api/invoices/{$invoice->id}/callback",
             'callback_secret' => config('services.invoice_worker.callback_secret'),
         ];
 

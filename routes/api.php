@@ -29,4 +29,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
     });
 
     Route::get('/invoices/{invoice}', [InvoiceController::class, 'show']);
+
+    Route::get('/invoices/{invoice}/download', [InvoiceController::class, 'download'])
+        ->name('invoices.download')
+        ->withoutMiddleware('auth:sanctum')
+        ->middleware('signed');
 });
