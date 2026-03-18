@@ -3,24 +3,17 @@
 namespace App\Models;
 
 use Database\Factories\ClientFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
 
+#[Fillable(['name', 'email', 'company_name', 'address', 'tax_id', 'status'])]
 class Client extends Model
 {
     /** @use HasFactory<ClientFactory> */
     use HasFactory, Notifiable;
-
-    protected $fillable = [
-        'name',
-        'email',
-        'company_name',
-        'address',
-        'tax_id',
-        'status',
-    ];
 
     /** @return HasMany<Project, $this> */
     public function projects(): HasMany

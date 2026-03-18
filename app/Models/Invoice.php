@@ -4,29 +4,17 @@ namespace App\Models;
 
 use App\Enums\InvoiceStatus;
 use Database\Factories\InvoiceFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+#[Fillable(['client_id', 'project_id', 'invoice_number', 'status', 'subtotal', 'tax_rate', 'tax_amount', 'total', 'pdf_path', 'pdf_generated_at', 'due_date'])]
 class Invoice extends Model
 {
     /** @use HasFactory<InvoiceFactory> */
     use HasFactory;
-
-    protected $fillable = [
-        'client_id',
-        'project_id',
-        'invoice_number',
-        'status',
-        'subtotal',
-        'tax_rate',
-        'tax_amount',
-        'total',
-        'pdf_path',
-        'pdf_generated_at',
-        'due_date',
-    ];
 
     protected function casts(): array
     {

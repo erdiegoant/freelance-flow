@@ -3,17 +3,16 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Http\Resources\JsonApi\JsonApiResource;
 
-class InvoiceResource extends JsonResource
+class InvoiceResource extends JsonApiResource
 {
     /**
      * @return array<string, mixed>
      */
-    public function toArray(Request $request): array
+    public function toAttributes(Request $request): array
     {
         return [
-            'id' => $this->id,
             'invoice_number' => $this->invoice_number,
             'status' => $this->status->value,
             'subtotal' => $this->subtotal,
@@ -23,10 +22,15 @@ class InvoiceResource extends JsonResource
             'due_date' => $this->due_date?->toDateString(),
             'pdf_path' => $this->pdf_path,
             'pdf_generated_at' => $this->pdf_generated_at?->toIso8601String(),
-            'client' => $this->whenLoaded('client'),
-            'project' => $this->whenLoaded('project'),
-            'items' => $this->whenLoaded('items'),
             'created_at' => $this->created_at->toIso8601String(),
         ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function toRelationships(Request $request): array
+    {
+        return ['client', 'project', 'items'];
     }
 }

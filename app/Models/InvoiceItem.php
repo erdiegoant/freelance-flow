@@ -3,23 +3,16 @@
 namespace App\Models;
 
 use Database\Factories\InvoiceItemFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+#[Fillable(['invoice_id', 'time_log_id', 'description', 'quantity', 'unit_price', 'total'])]
 class InvoiceItem extends Model
 {
     /** @use HasFactory<InvoiceItemFactory> */
     use HasFactory;
-
-    protected $fillable = [
-        'invoice_id',
-        'time_log_id',
-        'description',
-        'quantity',
-        'unit_price',
-        'total',
-    ];
 
     protected function casts(): array
     {

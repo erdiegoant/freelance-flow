@@ -3,22 +3,17 @@
 namespace App\Models;
 
 use Database\Factories\TimeLogFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+#[Fillable(['project_id', 'description', 'hours', 'logged_at'])]
 class TimeLog extends Model
 {
     /** @use HasFactory<TimeLogFactory> */
     use HasFactory;
-
-    protected $fillable = [
-        'project_id',
-        'description',
-        'hours',
-        'logged_at',
-    ];
 
     protected function casts(): array
     {
