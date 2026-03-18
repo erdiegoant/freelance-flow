@@ -37,7 +37,7 @@ class InvoiceController extends Controller
 
         new GenerateInvoicePdf($invoice)->handle();
 
-        return (new InvoiceResource($invoice))->response()->setStatusCode(202);
+        return new InvoiceResource($invoice)->response()->setStatusCode(202);
     }
 
     public function show(Invoice $invoice): JsonResponse
