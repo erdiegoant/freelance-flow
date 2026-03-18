@@ -89,6 +89,33 @@ services:
       "
     restart: "no"
 
+  laravel-setup:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    entrypoint: >
+      /bin/sh -c "
+        if [ ! -f /sentinel/migrated ]; then
+          php artisan migrate --seed --force &&
+          touch /sentinel/migrated &&
+          echo 'Migrations and seeding complete.';
+        else
+          echo 'Database already initialised, skipping.';
+        fi
+      "
+    env_file:
+      - .env
+    volumes:
+      - laravel_setup:/sentinel
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-setup:
+        condition: service_completed_successfully
+    restart: "no"
+
   go-worker:
     build:
       context: .
@@ -110,3 +137,4 @@ volumes:
   postgres_data:
   redis_data:
   minio_data:
+  laravel_setup:
