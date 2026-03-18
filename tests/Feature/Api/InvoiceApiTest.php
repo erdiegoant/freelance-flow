@@ -32,8 +32,8 @@ describe('POST /api/projects/{project}/invoices', function () {
             'tax_rate' => 0.19,
         ])
             ->assertStatus(202)
-            ->assertJsonPath('status', 'processing')
-            ->assertJsonPath('invoice_number', 'INV-2026-0001');
+            ->assertJsonPath('data.attributes.status', 'processing')
+            ->assertJsonPath('data.attributes.invoice_number', 'INV-2026-0001');
     });
 
     it('stores the invoice in the database', function () {
@@ -75,9 +75,9 @@ describe('POST /api/projects/{project}/invoices', function () {
             'tax_rate' => 0.19,
         ])->assertStatus(202)->json();
 
-        expect((float) $response['subtotal'])->toBe(450.0)
-            ->and((float) $response['tax_amount'])->toBe(85.5)
-            ->and((float) $response['total'])->toBe(535.5);
+        expect((float) $response['data']['attributes']['subtotal'])->toBe(450.0)
+            ->and((float) $response['data']['attributes']['tax_amount'])->toBe(85.5)
+            ->and((float) $response['data']['attributes']['total'])->toBe(535.5);
     });
 
     it('only includes time logs within the date range', function () {
@@ -91,7 +91,7 @@ describe('POST /api/projects/{project}/invoices', function () {
         ])->assertStatus(202)->json();
 
         // Only the in-range log: 3 hours × $100 = $300
-        expect((float) $response['subtotal'])->toBe(300.0);
+        expect((float) $response['data']['attributes']['subtotal'])->toBe(300.0);
     });
 
     it('returns 422 when no unbilled time logs exist in range', function () {
@@ -127,9 +127,9 @@ describe('GET /api/invoices/{invoice}', function () {
 
         $this->getJson("/api/invoices/{$invoice->id}")
             ->assertSuccessful()
-            ->assertJsonPath('invoice_number', 'INV-2026-0042')
-            ->assertJsonPath('status', 'pending')
-            ->assertJsonStructure(['id', 'invoice_number', 'status', 'subtotal', 'total', 'due_date', 'client', 'project']);
+            ->assertJsonPath('data.attributes.invoice_number', 'INV-2026-0042')
+            ->assertJsonPath('data.attributes.status', 'pending')
+            ->assertJsonStructure(['data' => ['id', 'type', 'attributes' => ['invoice_number', 'status', 'subtotal', 'total', 'due_date']]]);
     });
 
     it('returns 404 for unknown invoice', function () {

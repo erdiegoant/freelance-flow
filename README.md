@@ -1,6 +1,6 @@
 # FreelanceFlow
 
-A freelance project management API built with Laravel 12. Track clients, projects, and time logs — then generate invoices with PDF creation offloaded to a Go microservice via Redis.
+A freelance project management API built with Laravel 13. Track clients, projects, and time logs — then generate invoices with PDF creation offloaded to a Go microservice via Redis.
 
 ## Authentication
 
@@ -34,7 +34,7 @@ curl -X POST http://localhost:8080/api/auth/logout \
 
 | Layer | Technology |
 |---|---|
-| API | PHP 8.5 + Laravel 12 |
+| API | PHP 8.5 + Laravel 13 |
 | Database | PostgreSQL 17 |
 | Queue / IPC | Redis 7 |
 | File storage | MinIO (S3-compatible) |
@@ -94,8 +94,10 @@ POST   /api/invoices/{invoice}/callback       Go worker callback (PDF done)
 ### Start the stack
 
 ```bash
-docker compose up -d
+docker compose up --build -d
 ```
+
+The `--build` flag triggers the `laravel-setup` service which automatically runs migrations and seeds the database on first start. Subsequent runs skip setup if the database has already been initialised.
 
 Services:
 
@@ -106,14 +108,14 @@ Services:
 | PostgreSQL | localhost:5432 |
 | Redis | localhost:6379 |
 
-### Run migrations and seed
+The seeder creates 3 clients, 2–3 active projects each, and 10–20 unbilled time logs per project spread across the last 3 months.
+
+To force a re-run (e.g. after wiping the database), remove the sentinel volume and restart:
 
 ```bash
-docker compose exec php php artisan migrate
-docker compose exec php php artisan db:seed
+docker volume rm freelance-flow_laravel_setup
+docker compose up --build -d
 ```
-
-The seeder creates 3 clients, 2–3 active projects each, and 10–20 unbilled time logs per project spread across the last 3 months.
 
 ### Trigger a test invoice
 
@@ -127,6 +129,56 @@ curl -X POST http://localhost:8080/api/projects/1/invoices \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"start_date": "2026-01-01", "end_date": "2026-03-31"}'
+```
+
+Invoice endpoints return [JSON:API](https://jsonapi.org) responses (`Content-Type: application/vnd.api+json`):
+
+```json
+{
+    "data": {
+        "id": "1",
+        "type": "Invoices",
+        "attributes": {
+            "invoice_number": "INV-2026-0001",
+            "status": "processing",
+            "subtotal": "337.50",
+            "tax_rate": "0.1900",
+            "tax_amount": "64.13",
+            "total": "401.63",
+            "due_date": "2026-04-15",
+            "pdf_path": null,
+            "pdf_generated_at": null,
+            "created_at": "2026-03-18T10:00:00+00:00"
+        }
+    }
+}
+```
+
+Relationships (`client`, `project`, `items`) are loaded on demand via the `include` query parameter:
+
+```bash
+curl http://localhost:8080/api/invoices/1?include=client,project,items \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+```json
+{
+    "data": {
+        "id": "1",
+        "type": "Invoices",
+        "attributes": { "...": "..." },
+        "relationships": {
+            "client": { "data": { "id": "1", "type": "Clients" } },
+            "project": { "data": { "id": "1", "type": "Projects" } },
+            "items": { "data": [{ "id": "1", "type": "InvoiceItems" }] }
+        }
+    },
+    "included": [
+        { "id": "1", "type": "Clients", "attributes": { "name": "Acme Corp", "...": "..." } },
+        { "id": "1", "type": "Projects", "attributes": { "name": "Website Redesign", "...": "..." } },
+        { "id": "1", "type": "InvoiceItems", "attributes": { "description": "...", "total": "337.50" } }
+    ]
+}
 ```
 
 ### Inspect the Redis queue
