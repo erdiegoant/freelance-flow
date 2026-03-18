@@ -6,10 +6,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"freelanceflow/go-worker/internal/config"
 	"freelanceflow/go-worker/internal/queue"
+	"freelanceflow/go-worker/internal/storage"
+	"freelanceflow/go-worker/internal/worker"
 
 	"github.com/joho/godotenv"
 )
@@ -32,6 +33,11 @@ func main() {
 	q := queue.New(cfg)
 	defer q.Close()
 
+	minioClient, err := storage.New(cfg)
+	if err != nil {
+		log.Fatalf("Failed to create MinIO client: %v", err)
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -39,27 +45,7 @@ func main() {
 		log.Fatalf("Failed to connect to Redis: %v", err)
 	}
 
-	log.Println("Redis connection OK. Waiting for jobs...")
+	log.Printf("Redis OK. MinIO OK. Starting %d worker(s)...", cfg.WorkerPoolSize)
 
-	for {
-		select {
-		case <-ctx.Done():
-			log.Println("Shutdown signal received. Exiting.")
-			return
-		default:
-		}
-
-		payload, err := q.Dequeue(ctx)
-		if err != nil {
-			log.Printf("Dequeue error: %v", err)
-			time.Sleep(2 * time.Second)
-			continue
-		}
-
-		if payload == "" {
-			continue // timeout — no job, keep looping
-		}
-
-		log.Printf("Received payload: %s", payload)
-	}
+	worker.Run(ctx, cfg, q, minioClient)
 }

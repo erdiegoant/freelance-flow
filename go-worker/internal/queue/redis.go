@@ -30,24 +30,24 @@ func New(cfg *config.Config) *Queue {
 }
 
 // Dequeue performs a blocking left-pop (BLPOP) with a 5-second timeout.
-// Laravel pushes jobs with RPUSH, so BLPOP gives FIFO order.
-// Returns ("", nil) on timeout — callers should loop without treating it as an error.
-func (q *Queue) Dequeue(ctx context.Context) (string, error) {
+// Laravel pushes raw JSON with RPUSH, so BLPOP gives FIFO order.
+// Returns (nil, nil) on timeout — callers should loop without treating it as an error.
+func (q *Queue) Dequeue(ctx context.Context) ([]byte, error) {
 	result, err := q.client.BLPop(ctx, 5*time.Second, q.cfg.RedisQueueKey).Result()
 
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			// Timeout — no job available, not a real error.
-			return "", nil
+			return nil, nil
 		}
 
-		return "", err
+		return nil, err
 	}
 
-	// BLPop returns [key, value]; result[1] is the payload.
+	// BLPop returns [key, value]; result[1] is the raw JSON payload.
 	log.Printf("Job received from Redis queue %q", q.cfg.RedisQueueKey)
 
-	return result[1], nil
+	return []byte(result[1]), nil
 }
 
 func (q *Queue) Ping(ctx context.Context) error {
