@@ -119,6 +119,36 @@ describe('POST /api/projects/{project}/invoices', function () {
     })->with('invalid invoice payloads');
 });
 
+describe('GET /api/projects/{project}/invoices', function () {
+    it('lists invoices for a project', function () {
+        $project = Project::factory()->create();
+        Invoice::factory(3)->for($project)->create();
+
+        $this->getJson("/api/projects/{$project->id}/invoices")
+            ->assertSuccessful()
+            ->assertJsonCount(3, 'data');
+    });
+
+    it('returns an empty list when the project has no invoices', function () {
+        $project = Project::factory()->create();
+
+        $this->getJson("/api/projects/{$project->id}/invoices")
+            ->assertSuccessful()
+            ->assertJsonCount(0, 'data');
+    });
+
+    it('does not include invoices from other projects', function () {
+        $project = Project::factory()->create();
+        $other = Project::factory()->create();
+        Invoice::factory(2)->for($project)->create();
+        Invoice::factory()->for($other)->create();
+
+        $this->getJson("/api/projects/{$project->id}/invoices")
+            ->assertSuccessful()
+            ->assertJsonCount(2, 'data');
+    });
+});
+
 describe('GET /api/invoices/{invoice}', function () {
     it('returns invoice with relationships', function () {
         $invoice = Invoice::factory()

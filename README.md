@@ -83,6 +83,7 @@ POST   /api/clients                           Create a client
 GET    /api/clients/{client}/projects         List projects for a client
 POST   /api/clients/{client}/projects         Create a project
 POST   /api/projects/{project}/time-logs      Log time on a project
+GET    /api/projects/{project}/invoices       List all invoices for a project
 POST   /api/projects/{project}/invoices       Generate an invoice
 GET    /api/invoices/{invoice}                Get invoice status and details
 ```

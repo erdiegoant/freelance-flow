@@ -25,6 +25,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     Route::prefix('/projects/{project}')->group(function (): void {
         Route::post('/time-logs', [TimeLogController::class, 'store']);
+        Route::get('/invoices', [InvoiceController::class, 'index']);
         Route::post('/invoices', [InvoiceController::class, 'store']);
     });
 

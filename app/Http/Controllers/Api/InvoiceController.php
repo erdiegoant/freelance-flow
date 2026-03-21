@@ -14,12 +14,21 @@ use App\Services\InvoiceBuilderService;
 use App\Services\InvoiceCallbackService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class InvoiceController extends Controller
 {
+    public function index(Request $request, Project $project): AnonymousResourceCollection
+    {
+        $invoices = $project->invoices()->latest()->paginate();
+
+        return InvoiceResource::collection($invoices);
+    }
+
     public function store(
         GenerateInvoiceRequest $request,
         Project $project,
