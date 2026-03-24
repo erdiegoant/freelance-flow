@@ -1,6 +1,6 @@
 # FreelanceFlow
 
-A freelance project management API built with Laravel 12. Track clients, projects, and time logs — then generate invoices with PDF creation offloaded to a Go microservice via Redis.
+A freelance project management API built with Laravel 13. Track clients, projects, and time logs — then generate invoices with PDF creation offloaded to a Go microservice via Redis.
 
 ## Authentication
 
@@ -32,14 +32,14 @@ curl -X POST http://localhost:8080/api/auth/logout \
 
 ## Stack
 
-| Layer | Technology |
-|---|---|
-| API | PHP 8.5 + Laravel 12 |
-| Database | PostgreSQL 17 |
-| Queue / IPC | Redis 7 |
-| File storage | MinIO (S3-compatible) |
+| Layer | Technology                                   |
+|---|----------------------------------------------|
+| API | PHP 8.5 + Laravel 13                         |
+| Database | PostgreSQL 17                                |
+| Queue / IPC | Redis 7                                      |
+| File storage | MinIO (S3-compatible)                        |
 | PDF worker | Go 1.23 (separate service, reads from Redis) |
-| Infrastructure | Docker Compose |
+| Infrastructure | Docker Compose                               |
 
 ## Features
 
